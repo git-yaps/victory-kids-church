@@ -11,7 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppScannerRouteImport } from './routes/_app.scanner'
+import { Route as AppRecordsRouteImport } from './routes/_app.records'
+import { Route as AppManualRouteImport } from './routes/_app.manual'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppChildrenRouteImport } from './routes/_app.children'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -23,38 +29,110 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppScannerRoute = AppScannerRouteImport.update({
+  id: '/scanner',
+  path: '/scanner',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRecordsRoute = AppRecordsRouteImport.update({
+  id: '/records',
+  path: '/records',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppManualRoute = AppManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChildrenRoute = AppChildrenRouteImport.update({
+  id: '/children',
+  path: '/children',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/children': typeof AppChildrenRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/manual': typeof AppManualRoute
+  '/records': typeof AppRecordsRoute
+  '/scanner': typeof AppScannerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/children': typeof AppChildrenRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/manual': typeof AppManualRoute
+  '/records': typeof AppRecordsRoute
+  '/scanner': typeof AppScannerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_app/children': typeof AppChildrenRoute
+  '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/manual': typeof AppManualRoute
+  '/_app/records': typeof AppRecordsRoute
+  '/_app/scanner': typeof AppScannerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/reset-password'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/reset-password'
+    | '/children'
+    | '/dashboard'
+    | '/manual'
+    | '/records'
+    | '/scanner'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/reset-password'
-  id: '__root__' | '/' | '/login' | '/reset-password'
+  to:
+    | '/'
+    | '/login'
+    | '/reset-password'
+    | '/children'
+    | '/dashboard'
+    | '/manual'
+    | '/records'
+    | '/scanner'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/reset-password'
+    | '/_app/children'
+    | '/_app/dashboard'
+    | '/_app/manual'
+    | '/_app/records'
+    | '/_app/scanner'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
 }
@@ -75,6 +153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,11 +167,65 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/scanner': {
+      id: '/_app/scanner'
+      path: '/scanner'
+      fullPath: '/scanner'
+      preLoaderRoute: typeof AppScannerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/records': {
+      id: '/_app/records'
+      path: '/records'
+      fullPath: '/records'
+      preLoaderRoute: typeof AppRecordsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/manual': {
+      id: '/_app/manual'
+      path: '/manual'
+      fullPath: '/manual'
+      preLoaderRoute: typeof AppManualRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/children': {
+      id: '/_app/children'
+      path: '/children'
+      fullPath: '/children'
+      preLoaderRoute: typeof AppChildrenRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppChildrenRoute: typeof AppChildrenRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppManualRoute: typeof AppManualRoute
+  AppRecordsRoute: typeof AppRecordsRoute
+  AppScannerRoute: typeof AppScannerRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppChildrenRoute: AppChildrenRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppManualRoute: AppManualRoute,
+  AppRecordsRoute: AppRecordsRoute,
+  AppScannerRoute: AppScannerRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
 }

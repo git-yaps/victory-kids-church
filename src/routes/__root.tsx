@@ -81,6 +81,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Victory Kids Church Attendance" },
+      { name: "twitter:description", content: "QR-enabled attendance system for Victory Kids Church ministry." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1a16a82-580b-4eab-b665-a75817f8c2c8/id-preview-511760ed--e089bac6-e7d7-4a1d-8827-e2813de2d78b.lovable.app-1778119609754.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c1a16a82-580b-4eab-b665-a75817f8c2c8/id-preview-511760ed--e089bac6-e7d7-4a1d-8827-e2813de2d78b.lovable.app-1778119609754.png" },
     ],
     links: [
       {

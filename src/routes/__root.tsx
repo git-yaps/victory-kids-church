@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -72,11 +73,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Victory Kids Church Attendance" },
+      { name: "description", content: "QR-enabled attendance system for Victory Kids Church ministry." },
+      { name: "author", content: "Victory Kids Church" },
+      { property: "og:title", content: "Victory Kids Church Attendance" },
+      { property: "og:description", content: "QR-enabled attendance system for Victory Kids Church ministry." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
@@ -114,6 +115,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );
 }

@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/scanner")({
   component: Scanner,
 });
 
-type LastResult = { ok: boolean; name?: string; service?: string; message: string; ts: number };
+type LastResult = { ok: boolean; child?: { full_name: string; age: number; parent_name: string; service_schedule: string }; service?: string; message: string; ts: number };
 
 function Scanner() {
   const containerId = "qr-reader";

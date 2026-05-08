@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
 import { enqueueAttendance } from "@/lib/offline-queue";
+import { ageCategory } from "@/lib/utils-app";
 
 export const Route = createFileRoute("/_app/scanner")({
   component: Scanner,
 });
 
-type LastResult = { ok: boolean; name?: string; service?: string; message: string; ts: number };
+type LastResult = { ok: boolean; child?: { full_name: string; age: number; parent_name: string; service_schedule: string }; service?: string; message: string; ts: number };
 
 function Scanner() {
   const containerId = "qr-reader";
@@ -93,7 +94,7 @@ function Scanner() {
 
     if (!navigator.onLine) {
       enqueueAttendance(attendance);
-      setLast({ ok: true, name: child.full_name, service: child.service_schedule, message: "Saved offline — will sync when back online", ts: Date.now() });
+      setLast({ ok: true, child, service: child.service_schedule, message: "Saved offline — will sync when back online", ts: Date.now() });
       toast.success(`${child.full_name} — saved offline`);
       return;
     }
@@ -101,7 +102,7 @@ function Scanner() {
     const { error: insertErr } = await supabase.from("attendance").insert(attendance);
     if (insertErr) {
       if (insertErr.message.toLowerCase().includes("duplicate") || (insertErr as any).code === "23505") {
-        setLast({ ok: false, name: child.full_name, message: "Already checked in today", ts: Date.now() });
+        setLast({ ok: false, child, message: "Already checked in today", ts: Date.now() });
         toast.info(`${child.full_name} is already checked in today`);
       } else {
         setLast({ ok: false, message: insertErr.message, ts: Date.now() });
@@ -109,7 +110,7 @@ function Scanner() {
       }
       return;
     }
-    setLast({ ok: true, name: child.full_name, service: child.service_schedule, message: "Checked in successfully", ts: Date.now() });
+    setLast({ ok: true, child, service: child.service_schedule, message: "Checked in successfully", ts: Date.now() });
     toast.success(`${child.full_name} checked in`);
   }
 
@@ -141,10 +142,19 @@ function Scanner() {
         <Card className={last.ok ? "border-success" : "border-destructive"}>
           <CardContent className="p-6 flex items-start gap-4">
             {last.ok ? <CheckCircle2 className="h-8 w-8 text-success shrink-0" /> : <XCircle className="h-8 w-8 text-destructive shrink-0" />}
-            <div className="flex-1">
-              {last.name && <div className="text-lg font-semibold">{last.name}</div>}
-              {last.service && <Badge variant="secondary" className="mt-1">{last.service}</Badge>}
-              <div className="text-sm text-muted-foreground mt-2">{last.message}</div>
+            <div className="flex-1 space-y-2">
+              {last.child && (
+                <>
+                  <div className="text-xl font-bold">{last.child.full_name}</div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Age {last.child.age}</Badge>
+                    <Badge className={ageCategory(last.child.age).tone}>{ageCategory(last.child.age).label}</Badge>
+                    <Badge variant="outline">{last.child.service_schedule}</Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">Parent: {last.child.parent_name}</div>
+                </>
+              )}
+              <div className={`text-sm font-medium ${last.ok ? "text-success" : "text-destructive"}`}>{last.message}</div>
             </div>
           </CardContent>
         </Card>

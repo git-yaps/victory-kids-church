@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
@@ -130,11 +132,31 @@ function Scanner() {
             <Button onClick={start}>Start Camera</Button>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div id={containerId} className="w-full max-w-md mx-auto rounded-lg overflow-hidden bg-muted aspect-square" />
           {!scanning && (
-            <p className="text-sm text-muted-foreground text-center mt-4">Click "Start Camera" and allow camera access.</p>
+            <p className="text-sm text-muted-foreground text-center">Click "Start Camera" and allow camera access.</p>
           )}
+          <div className="border-t pt-4 space-y-2">
+            <Label htmlFor="hw-scanner" className="text-sm font-medium">Physical QR scanner / manual paste</Label>
+            <Input
+              id="hw-scanner"
+              autoFocus
+              placeholder="Focus here and scan with USB/Bluetooth scanner, then it submits on Enter"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const val = (e.target as HTMLInputElement).value.trim();
+                  if (val) {
+                    onScan(val);
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }
+              }}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">Most USB/Bluetooth QR scanners act as keyboards — keep this field focused while scanning.</p>
+          </div>
         </CardContent>
       </Card>
 

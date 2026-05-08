@@ -16,10 +16,12 @@ export const Route = createFileRoute("/_app/scanner")({
 });
 
 type LastResult = { ok: boolean; child?: { full_name: string; age: number; parent_name: string; service_schedule: string }; service?: string; message: string; ts: number };
+type Mode = "camera" | "hardware";
 
 function Scanner() {
   const containerId = "qr-reader";
   const [scanning, setScanning] = useState(false);
+  const [mode, setMode] = useState<Mode>("camera");
   const [last, setLast] = useState<LastResult | null>(null);
   const scannerRef = useRef<any>(null);
   const processingRef = useRef(false);

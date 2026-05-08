@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Search, UserPlus } from "lucide-react";
+import { UserPlus, FileDown, Trash2 } from "lucide-react";
+import { downloadCSV, ageCategory } from "@/lib/utils-app";
 
 export const Route = createFileRoute("/_app/records")({
   component: RecordsPage,
@@ -32,6 +34,7 @@ function RecordsPage() {
   const [service, setService] = useState("");
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = async () => {
     setLoading(true);
@@ -46,6 +49,7 @@ function RecordsPage() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     setRows((data as any) ?? []);
+    setSelected(new Set());
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, service, page]);
@@ -55,14 +59,54 @@ function RecordsPage() {
     (!parent || r.children?.parent_name.toLowerCase().includes(parent.toLowerCase()))
   ), [rows, child, parent]);
 
+  const allSelected = filtered.length > 0 && filtered.every(r => selected.has(r.id));
+  const toggleAll = () => {
+    const next = new Set(selected);
+    if (allSelected) filtered.forEach(r => next.delete(r.id));
+    else filtered.forEach(r => next.add(r.id));
+    setSelected(next);
+  };
+  const toggleOne = (id: string) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
+  };
+
+  const handleBatchDelete = async () => {
+    if (!selected.size) return;
+    if (!confirm(`Delete ${selected.size} attendance record(s)?`)) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase.from("attendance").delete().in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(`Deleted ${ids.length}`); load();
+  };
+
+  const exportCSV = () => {
+    if (!filtered.length) return toast.info("Nothing to export");
+    downloadCSV(`attendance_${date || "all"}.csv`,
+      filtered.map(r => ({
+        Date: r.attendance_date,
+        Time: r.attendance_time?.slice(0, 5),
+        Child: r.children?.full_name ?? "",
+        Age: r.children?.age ?? "",
+        Category: r.children ? ageCategory(r.children.age).label : "",
+        Parent: r.children?.parent_name ?? "",
+        Service: r.service_schedule,
+        Method: r.method.toUpperCase(),
+      })));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Attendance Records</h1>
-          <p className="text-muted-foreground mt-1">Search and filter attendance history.</p>
+          <p className="text-muted-foreground mt-1">Records older than 30 days are auto-purged.</p>
         </div>
-        <Link to="/manual"><Button variant="outline"><UserPlus className="h-4 w-4 mr-2" />Manual Check-In</Button></Link>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV}><FileDown className="h-4 w-4 mr-2" />Export CSV</Button>
+          <Link to="/manual"><Button variant="outline"><UserPlus className="h-4 w-4 mr-2" />Manual Check-In</Button></Link>
+        </div>
       </div>
 
       <Card>
@@ -77,29 +121,37 @@ function RecordsPage() {
             <div><label className="text-xs text-muted-foreground">Service</label>
               <Input placeholder="e.g. Sunday" value={service} onChange={e => { setService(e.target.value); setPage(0); }} /></div>
           </div>
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 items-center">
             <Button variant="ghost" size="sm" onClick={() => { setDate(""); setChild(""); setParent(""); setService(""); setPage(0); }}>Clear filters</Button>
+            {selected.size > 0 && (
+              <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />Delete Selected ({selected.size})
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10"><Checkbox checked={allSelected} onCheckedChange={toggleAll} /></TableHead>
                 <TableHead>Date</TableHead><TableHead>Time</TableHead>
-                <TableHead>Child</TableHead><TableHead>Parent</TableHead>
+                <TableHead>Child</TableHead><TableHead>Category</TableHead><TableHead>Parent</TableHead>
                 <TableHead>Service</TableHead><TableHead>Method</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
+              {loading && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>}
               {!loading && filtered.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No records found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No records found.</TableCell></TableRow>
               )}
               {filtered.map(r => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
+                  <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} /></TableCell>
                   <TableCell>{r.attendance_date}</TableCell>
                   <TableCell>{r.attendance_time?.slice(0,5)}</TableCell>
                   <TableCell className="font-medium">{r.children?.full_name ?? "—"}</TableCell>
+                  <TableCell>{r.children ? <Badge variant="secondary">{ageCategory(r.children.age).label}</Badge> : "—"}</TableCell>
                   <TableCell>{r.children?.parent_name ?? "—"}</TableCell>
                   <TableCell>{r.service_schedule}</TableCell>
                   <TableCell><Badge variant={r.method === "qr" ? "default" : "secondary"}>{r.method.toUpperCase()}</Badge></TableCell>

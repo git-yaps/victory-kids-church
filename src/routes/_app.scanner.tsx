@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
 import { enqueueAttendance } from "@/lib/offline-queue";
+import { ageCategory } from "@/lib/utils-app";
 
 export const Route = createFileRoute("/_app/scanner")({
   component: Scanner,

@@ -142,10 +142,19 @@ function Scanner() {
         <Card className={last.ok ? "border-success" : "border-destructive"}>
           <CardContent className="p-6 flex items-start gap-4">
             {last.ok ? <CheckCircle2 className="h-8 w-8 text-success shrink-0" /> : <XCircle className="h-8 w-8 text-destructive shrink-0" />}
-            <div className="flex-1">
-              {last.name && <div className="text-lg font-semibold">{last.name}</div>}
-              {last.service && <Badge variant="secondary" className="mt-1">{last.service}</Badge>}
-              <div className="text-sm text-muted-foreground mt-2">{last.message}</div>
+            <div className="flex-1 space-y-2">
+              {last.child && (
+                <>
+                  <div className="text-xl font-bold">{last.child.full_name}</div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">Age {last.child.age}</Badge>
+                    <Badge className={ageCategory(last.child.age).tone}>{ageCategory(last.child.age).label}</Badge>
+                    <Badge variant="outline">{last.child.service_schedule}</Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">Parent: {last.child.parent_name}</div>
+                </>
+              )}
+              <div className={`text-sm font-medium ${last.ok ? "text-success" : "text-destructive"}`}>{last.message}</div>
             </div>
           </CardContent>
         </Card>

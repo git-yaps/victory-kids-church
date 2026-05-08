@@ -126,39 +126,62 @@ function Scanner() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
           <CardTitle className="flex items-center gap-2"><ScanLine className="h-5 w-5" /> Scanner</CardTitle>
-          {scanning ? (
-            <Button variant="outline" onClick={stop}>Stop</Button>
-          ) : (
-            <Button onClick={start}>Start Camera</Button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-md border bg-muted p-0.5">
+              <Button
+                size="sm"
+                variant={mode === "camera" ? "default" : "ghost"}
+                onClick={() => { if (mode !== "camera") { stop(); setMode("camera"); } }}
+              >
+                Camera
+              </Button>
+              <Button
+                size="sm"
+                variant={mode === "hardware" ? "default" : "ghost"}
+                onClick={() => { if (mode !== "hardware") { stop(); setMode("hardware"); } }}
+              >
+                QR Scanner
+              </Button>
+            </div>
+            {mode === "camera" && (scanning ? (
+              <Button variant="outline" onClick={stop}>Stop</Button>
+            ) : (
+              <Button onClick={start}>Start Camera</Button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div id={containerId} className="w-full max-w-md mx-auto rounded-lg overflow-hidden bg-muted aspect-square" />
-          {!scanning && (
-            <p className="text-sm text-muted-foreground text-center">Click "Start Camera" and allow camera access.</p>
-          )}
-          <div className="border-t pt-4 space-y-2">
-            <Label htmlFor="hw-scanner" className="text-sm font-medium">Physical QR scanner / manual paste</Label>
-            <Input
-              id="hw-scanner"
-              autoFocus
-              placeholder="Focus here and scan with USB/Bluetooth scanner, then it submits on Enter"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const val = (e.target as HTMLInputElement).value.trim();
-                  if (val) {
-                    onScan(val);
-                    (e.target as HTMLInputElement).value = "";
+          {mode === "camera" ? (
+            <>
+              <div id={containerId} className="w-full max-w-md mx-auto rounded-lg overflow-hidden bg-muted aspect-square" />
+              {!scanning && (
+                <p className="text-sm text-muted-foreground text-center">Click "Start Camera" and allow camera access.</p>
+              )}
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="hw-scanner" className="text-sm font-medium">Physical QR scanner / manual paste</Label>
+              <Input
+                id="hw-scanner"
+                autoFocus
+                placeholder="Focus here and scan with USB/Bluetooth scanner, then it submits on Enter"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (val) {
+                      onScan(val);
+                      (e.target as HTMLInputElement).value = "";
+                    }
                   }
-                }
-              }}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">Most USB/Bluetooth QR scanners act as keyboards — keep this field focused while scanning.</p>
-          </div>
+                }}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">Most USB/Bluetooth QR scanners act as keyboards — keep this field focused while scanning.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

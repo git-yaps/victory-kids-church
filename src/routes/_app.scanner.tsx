@@ -94,7 +94,7 @@ function Scanner() {
 
     if (!navigator.onLine) {
       enqueueAttendance(attendance);
-      setLast({ ok: true, name: child.full_name, service: child.service_schedule, message: "Saved offline — will sync when back online", ts: Date.now() });
+      setLast({ ok: true, child, service: child.service_schedule, message: "Saved offline — will sync when back online", ts: Date.now() });
       toast.success(`${child.full_name} — saved offline`);
       return;
     }
@@ -102,7 +102,7 @@ function Scanner() {
     const { error: insertErr } = await supabase.from("attendance").insert(attendance);
     if (insertErr) {
       if (insertErr.message.toLowerCase().includes("duplicate") || (insertErr as any).code === "23505") {
-        setLast({ ok: false, name: child.full_name, message: "Already checked in today", ts: Date.now() });
+        setLast({ ok: false, child, message: "Already checked in today", ts: Date.now() });
         toast.info(`${child.full_name} is already checked in today`);
       } else {
         setLast({ ok: false, message: insertErr.message, ts: Date.now() });
@@ -110,7 +110,7 @@ function Scanner() {
       }
       return;
     }
-    setLast({ ok: true, name: child.full_name, service: child.service_schedule, message: "Checked in successfully", ts: Date.now() });
+    setLast({ ok: true, child, service: child.service_schedule, message: "Checked in successfully", ts: Date.now() });
     toast.success(`${child.full_name} checked in`);
   }
 

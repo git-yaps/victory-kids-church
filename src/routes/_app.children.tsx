@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, QrCode, Pencil, Trash2, Download, Printer, Search, FileDown } from "lucide-react";
 import { QRCodeImage } from "@/components/QRCodeImage";
+import { CSVImport } from "@/components/CSVImport";
 import QRCode from "qrcode";
 import { z } from "zod";
 import { ageCategory, SUNDAY_SERVICES, downloadCSV } from "@/lib/utils-app";
@@ -39,6 +40,7 @@ const SERVICES = [...SUNDAY_SERVICES, "Friday 6:00 PM"];
 
 function buildQR(c: Child) {
   return JSON.stringify({
+    type: "child",
     id: c.id, full_name: c.full_name, age: c.age,
     parent_name: c.parent_name, service_schedule: c.service_schedule,
   });

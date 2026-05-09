@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { UserPlus, FileDown, Trash2 } from "lucide-react";
-import { downloadCSV, ageCategory } from "@/lib/utils-app";
+import { downloadCSV, ageCategory, ageFromBirthday } from "@/lib/utils-app";
 
 export const Route = createFileRoute("/_app/records")({
   component: RecordsPage,
@@ -22,6 +22,7 @@ type Row = {
   service_schedule: string;
   method: string;
   children: { full_name: string; parent_name: string; age: number } | null;
+  serve_team: { full_name: string; birthday: string } | null;
 };
 
 const PAGE = 25;
@@ -39,7 +40,7 @@ function RecordsPage() {
   const load = async () => {
     setLoading(true);
     let q = supabase.from("attendance")
-      .select("id,attendance_date,attendance_time,service_schedule,method,children(full_name,parent_name,age)")
+      .select("id,attendance_date,attendance_time,service_schedule,method,children(full_name,parent_name,age),serve_team(full_name,birthday)")
       .order("attendance_date", { ascending: false })
       .order("attendance_time", { ascending: false })
       .range(page * PAGE, page * PAGE + PAGE - 1);
@@ -54,10 +55,12 @@ function RecordsPage() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, service, page]);
 
-  const filtered = useMemo(() => rows.filter(r =>
-    (!child || r.children?.full_name.toLowerCase().includes(child.toLowerCase())) &&
-    (!parent || r.children?.parent_name.toLowerCase().includes(parent.toLowerCase()))
-  ), [rows, child, parent]);
+  const filtered = useMemo(() => rows.filter(r => {
+    const name = r.children?.full_name ?? r.serve_team?.full_name ?? "";
+    const par = r.children?.parent_name ?? "";
+    return (!child || name.toLowerCase().includes(child.toLowerCase())) &&
+      (!parent || par.toLowerCase().includes(parent.toLowerCase()));
+  }), [rows, child, parent]);
 
   const allSelected = filtered.length > 0 && filtered.every(r => selected.has(r.id));
   const toggleAll = () => {
@@ -84,16 +87,21 @@ function RecordsPage() {
   const exportCSV = () => {
     if (!filtered.length) return toast.info("Nothing to export");
     downloadCSV(`attendance_${date || "all"}.csv`,
-      filtered.map(r => ({
-        Date: r.attendance_date,
-        Time: r.attendance_time?.slice(0, 5),
-        Child: r.children?.full_name ?? "",
-        Age: r.children?.age ?? "",
-        Category: r.children ? ageCategory(r.children.age).label : "",
-        Parent: r.children?.parent_name ?? "",
-        Service: r.service_schedule,
-        Method: r.method.toUpperCase(),
-      })));
+      filtered.map(r => {
+        const isMember = !!r.serve_team;
+        const age = r.children?.age ?? (r.serve_team ? ageFromBirthday(r.serve_team.birthday) : "");
+        return {
+          date: r.attendance_date,
+          time: r.attendance_time?.slice(0, 5),
+          name: r.children?.full_name ?? r.serve_team?.full_name ?? "",
+          type: isMember ? "Serve Team" : "Child",
+          age,
+          category: isMember ? "Serve Team" : (r.children ? ageCategory(r.children.age).label : ""),
+          parent: r.children?.parent_name ?? "",
+          service: r.service_schedule,
+          method: r.method.toUpperCase(),
+        };
+      }));
   };
 
   return (
@@ -136,7 +144,7 @@ function RecordsPage() {
               <TableRow>
                 <TableHead className="w-10"><Checkbox checked={allSelected} onCheckedChange={toggleAll} /></TableHead>
                 <TableHead>Date</TableHead><TableHead>Time</TableHead>
-                <TableHead>Child</TableHead><TableHead>Category</TableHead><TableHead>Parent</TableHead>
+                <TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Parent</TableHead>
                 <TableHead>Service</TableHead><TableHead>Method</TableHead>
               </TableRow>
             </TableHeader>
@@ -145,18 +153,26 @@ function RecordsPage() {
               {!loading && filtered.length === 0 && (
                 <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No records found.</TableCell></TableRow>
               )}
-              {filtered.map(r => (
-                <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
-                  <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} /></TableCell>
-                  <TableCell>{r.attendance_date}</TableCell>
-                  <TableCell>{r.attendance_time?.slice(0,5)}</TableCell>
-                  <TableCell className="font-medium">{r.children?.full_name ?? "—"}</TableCell>
-                  <TableCell>{r.children ? <Badge variant="secondary">{ageCategory(r.children.age).label}</Badge> : "—"}</TableCell>
-                  <TableCell>{r.children?.parent_name ?? "—"}</TableCell>
-                  <TableCell>{r.service_schedule}</TableCell>
-                  <TableCell><Badge variant={r.method === "qr" ? "default" : "secondary"}>{r.method.toUpperCase()}</Badge></TableCell>
-                </TableRow>
-              ))}
+              {filtered.map(r => {
+                const isMember = !!r.serve_team;
+                const name = r.children?.full_name ?? r.serve_team?.full_name ?? "—";
+                return (
+                  <TableRow key={r.id} data-state={selected.has(r.id) ? "selected" : undefined}>
+                    <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} /></TableCell>
+                    <TableCell>{r.attendance_date}</TableCell>
+                    <TableCell>{r.attendance_time?.slice(0,5)}</TableCell>
+                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell>
+                      {isMember
+                        ? <Badge className="bg-primary text-primary-foreground">Serve Team</Badge>
+                        : r.children ? <Badge variant="secondary">{ageCategory(r.children.age).label}</Badge> : "—"}
+                    </TableCell>
+                    <TableCell>{r.children?.parent_name ?? "—"}</TableCell>
+                    <TableCell>{r.service_schedule}</TableCell>
+                    <TableCell><Badge variant={r.method === "qr" ? "default" : "secondary"}>{r.method.toUpperCase()}</Badge></TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           <div className="flex justify-between items-center pt-4">

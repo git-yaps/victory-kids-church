@@ -115,9 +115,29 @@ function ChildrenPage() {
     if (!filtered.length) return toast.info("Nothing to export");
     downloadCSV(`children_${new Date().toISOString().slice(0,10)}.csv`,
       filtered.map(c => ({
-        Name: c.full_name, Age: c.age, Category: ageCategory(c.age).label,
-        Parent: c.parent_name, Service: c.service_schedule,
+        full_name: c.full_name, age: c.age, category: ageCategory(c.age).label,
+        parent_name: c.parent_name, service_schedule: c.service_schedule,
       })));
+  };
+
+  const importCSV = async (rows: Record<string, string>[]) => {
+    const errors: string[] = [];
+    const valid: any[] = [];
+    rows.forEach((r, i) => {
+      const parsed = schema.safeParse({
+        full_name: r.full_name,
+        age: r.age,
+        parent_name: r.parent_name,
+        service_schedule: r.service_schedule,
+      });
+      if (!parsed.success) errors.push(`Row ${i + 2}: ${parsed.error.issues[0].message}`);
+      else valid.push(parsed.data);
+    });
+    if (!valid.length) return { inserted: 0, failed: rows.length, errors };
+    const { error } = await supabase.from("children").insert(valid);
+    if (error) return { inserted: 0, failed: rows.length, errors: [error.message] };
+    load();
+    return { inserted: valid.length, failed: errors.length, errors };
   };
 
   const downloadQR = async (c: Child) => {
@@ -153,7 +173,11 @@ function ChildrenPage() {
           <h1 className="text-3xl font-bold tracking-tight">Children</h1>
           <p className="text-muted-foreground mt-1">Register children and generate QR badges.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <CSVImport
+            sampleHeaders={["full_name", "age", "parent_name", "service_schedule"]}
+            onImport={importCSV}
+          />
           <Button variant="outline" onClick={exportCSV}><FileDown className="h-4 w-4 mr-2" />Export CSV</Button>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Register Child</Button></DialogTrigger>

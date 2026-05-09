@@ -18,9 +18,10 @@ export type Database = {
         Row: {
           attendance_date: string
           attendance_time: string
-          child_id: string
+          child_id: string | null
           created_at: string
           id: string
+          member_id: string | null
           method: string
           recorded_by: string | null
           service_schedule: string
@@ -28,9 +29,10 @@ export type Database = {
         Insert: {
           attendance_date?: string
           attendance_time?: string
-          child_id: string
+          child_id?: string | null
           created_at?: string
           id?: string
+          member_id?: string | null
           method?: string
           recorded_by?: string | null
           service_schedule: string
@@ -38,9 +40,10 @@ export type Database = {
         Update: {
           attendance_date?: string
           attendance_time?: string
-          child_id?: string
+          child_id?: string | null
           created_at?: string
           id?: string
+          member_id?: string | null
           method?: string
           recorded_by?: string | null
           service_schedule?: string
@@ -51,6 +54,13 @@ export type Database = {
             columns: ["child_id"]
             isOneToOne: false
             referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "serve_team"
             referencedColumns: ["id"]
           },
         ]
@@ -83,6 +93,36 @@ export type Database = {
           full_name?: string
           id?: string
           parent_name?: string
+          service_schedule?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      serve_team: {
+        Row: {
+          birthday: string
+          created_at: string
+          created_by: string | null
+          full_name: string
+          id: string
+          service_schedule: string
+          updated_at: string
+        }
+        Insert: {
+          birthday: string
+          created_at?: string
+          created_by?: string | null
+          full_name: string
+          id?: string
+          service_schedule: string
+          updated_at?: string
+        }
+        Update: {
+          birthday?: string
+          created_at?: string
+          created_by?: string | null
+          full_name?: string
+          id?: string
           service_schedule?: string
           updated_at?: string
         }

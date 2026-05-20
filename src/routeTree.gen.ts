@@ -14,7 +14,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppServeRouteImport } from './routes/_app.serve'
-import { Route as AppScannerRouteImport } from './routes/_app.scanner'
 import { Route as AppRecordsRouteImport } from './routes/_app.records'
 import { Route as AppManualRouteImport } from './routes/_app.manual'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
@@ -42,11 +41,6 @@ const IndexRoute = IndexRouteImport.update({
 const AppServeRoute = AppServeRouteImport.update({
   id: '/serve',
   path: '/serve',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppScannerRoute = AppScannerRouteImport.update({
-  id: '/scanner',
-  path: '/scanner',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRecordsRoute = AppRecordsRouteImport.update({
@@ -78,7 +72,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/manual': typeof AppManualRoute
   '/records': typeof AppRecordsRoute
-  '/scanner': typeof AppScannerRoute
   '/serve': typeof AppServeRoute
 }
 export interface FileRoutesByTo {
@@ -89,7 +82,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/manual': typeof AppManualRoute
   '/records': typeof AppRecordsRoute
-  '/scanner': typeof AppScannerRoute
   '/serve': typeof AppServeRoute
 }
 export interface FileRoutesById {
@@ -102,7 +94,6 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/manual': typeof AppManualRoute
   '/_app/records': typeof AppRecordsRoute
-  '/_app/scanner': typeof AppScannerRoute
   '/_app/serve': typeof AppServeRoute
 }
 export interface FileRouteTypes {
@@ -115,7 +106,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/manual'
     | '/records'
-    | '/scanner'
     | '/serve'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -126,7 +116,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/manual'
     | '/records'
-    | '/scanner'
     | '/serve'
   id:
     | '__root__'
@@ -138,7 +127,6 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/manual'
     | '/_app/records'
-    | '/_app/scanner'
     | '/_app/serve'
   fileRoutesById: FileRoutesById
 }
@@ -186,13 +174,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppServeRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/scanner': {
-      id: '/_app/scanner'
-      path: '/scanner'
-      fullPath: '/scanner'
-      preLoaderRoute: typeof AppScannerRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/records': {
       id: '/_app/records'
       path: '/records'
@@ -229,7 +210,6 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppManualRoute: typeof AppManualRoute
   AppRecordsRoute: typeof AppRecordsRoute
-  AppScannerRoute: typeof AppScannerRoute
   AppServeRoute: typeof AppServeRoute
 }
 
@@ -238,7 +218,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppManualRoute: AppManualRoute,
   AppRecordsRoute: AppRecordsRoute,
-  AppScannerRoute: AppScannerRoute,
   AppServeRoute: AppServeRoute,
 }
 
@@ -253,3 +232,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

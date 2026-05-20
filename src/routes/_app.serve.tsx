@@ -203,6 +203,8 @@ function ServePage() {
         </div>
       </div>
 
+      <AttendanceStats filter="member" title="Today's Serve Team Check-ins" />
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">

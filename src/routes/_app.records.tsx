@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { UserPlus, FileDown, Trash2 } from "lucide-react";
 import { downloadCSV, ageCategory, ageFromBirthday } from "@/lib/utils-app";
+import { AttendanceStats } from "@/components/AttendanceStats";
 
 export const Route = createFileRoute("/_app/records")({
   component: RecordsPage,

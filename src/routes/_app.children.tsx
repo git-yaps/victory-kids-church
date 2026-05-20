@@ -206,6 +206,8 @@ function ChildrenPage() {
         </div>
       </div>
 
+      <AttendanceStats filter="child" title="Today's Children Check-ins" />
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">

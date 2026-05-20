@@ -118,6 +118,8 @@ function RecordsPage() {
         </div>
       </div>
 
+      <AttendanceStats title="Today's Check-ins (All)" />
+
       <Card>
         <CardHeader>
           <div className="grid gap-3 md:grid-cols-4">

@@ -16,6 +16,7 @@ import { CSVImport } from "@/components/CSVImport";
 import QRCode from "qrcode";
 import { z } from "zod";
 import { ageCategory, SUNDAY_SERVICES, downloadCSV } from "@/lib/utils-app";
+import { AttendanceStats } from "@/components/AttendanceStats";
 
 export const Route = createFileRoute("/_app/children")({
   component: ChildrenPage,

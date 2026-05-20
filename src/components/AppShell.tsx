@@ -118,6 +118,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <ScannerFAB />
     </div>
   );
 }

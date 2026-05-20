@@ -2,15 +2,15 @@ import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, ScanLine, Users, ListChecks, LogOut, Menu, X, WifiOff, Wifi, HandHeart } from "lucide-react";
+import { LayoutDashboard, Users, ListChecks, LogOut, Menu, X, WifiOff, Wifi, HandHeart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { syncQueue, getQueuedCount } from "@/lib/offline-queue";
 import { toast } from "sonner";
+import { ScannerFAB } from "@/components/ScannerFAB";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/scanner", label: "QR Scanner", icon: ScanLine },
   { to: "/children", label: "Children", icon: Users },
   { to: "/serve", label: "Serve Team", icon: HandHeart },
   { to: "/records", label: "Attendance", icon: ListChecks },
@@ -118,6 +118,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <ScannerFAB />
     </div>
   );
 }

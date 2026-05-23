@@ -58,7 +58,7 @@ function LoginPage() {
         <div className="flex items-center gap-3">
           <img src="/victory-kids-logo.jpg" alt="Victory Kids Logo" className="h-11 w-11 rounded-xl object-cover" />
           <div>
-            <div className="font-bold">Victory Kids Church</div>
+            <div className="font-bold">{"\n"}</div>
             <div className="text-sm opacity-90">Kids Ministry Attendance</div>
           </div>
         </div>

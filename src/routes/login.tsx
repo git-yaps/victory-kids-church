@@ -63,7 +63,7 @@ function LoginPage() {
           </div>
         </div>
         <div className="space-y-4">
-          <ListChecks className="h-12 w-12 opacity-90" />
+          <img src="/victory-kids-logo.jpg" alt="Victory Kids Logo" className="h-20 w-auto rounded-xl opacity-90" />
           <h1 className="text-4xl font-bold leading-tight">{"\n"}</h1>
           <p className="opacity-90 max-w-sm">Register children, generate QR badges, and track attendance for every service — even offline.</p>
         </div>

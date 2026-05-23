@@ -76,9 +76,11 @@ export function AppShell() {
       >
         <div className="px-6 py-6 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center font-bold">VK</div>
+            <div className="h-10 w-10 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center">
+              <ListChecks className="h-6 w-6" />
+            </div>
             <div>
-              <div className="font-bold leading-tight">Victory Kids</div>
+              <div className="font-bold leading-tight">Victory Church</div>
               <div className="text-xs opacity-80">Attendance System</div>
             </div>
           </div>
@@ -122,7 +124,7 @@ export function AppShell() {
           <button onClick={() => setOpen(o => !o)} className="p-1.5 rounded-md hover:bg-accent">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <span className="font-semibold">Victory Kids Attendance</span>
+          <span className="font-semibold">Victory Church Attendance</span>
         </header>
         <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
           <Outlet />

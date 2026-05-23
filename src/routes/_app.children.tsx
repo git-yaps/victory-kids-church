@@ -4,19 +4,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableToolbar } from "@/components/TableToolbar";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, QrCode, Pencil, Trash2, Download, Printer, Search, FileDown } from "lucide-react";
+import { Plus, QrCode, Pencil, Trash2, Download, Printer, Search, FileDown, UserCheck, CircleCheck } from "lucide-react";
 import { QRCodeImage } from "@/components/QRCodeImage";
 import { CSVImport } from "@/components/CSVImport";
 import QRCode from "qrcode";
 import { z } from "zod";
 import { ageCategory, SUNDAY_SERVICES, downloadCSV } from "@/lib/utils-app";
 import { AttendanceStats } from "@/components/AttendanceStats";
+import { enqueueAttendance } from "@/lib/offline-queue";
+import { broadcastAttendanceChanged } from "@/lib/attendance-sync";
 
 export const Route = createFileRoute("/_app/children")({
   component: ChildrenPage,
@@ -50,22 +54,52 @@ function buildQR(c: Child) {
 function ChildrenPage() {
   const [items, setItems] = useState<Child[]>([]);
   const [search, setSearch] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
   const [editing, setEditing] = useState<Child | null>(null);
   const [open, setOpen] = useState(false);
   const [qrFor, setQrFor] = useState<Child | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busyCheckIn, setBusyCheckIn] = useState<string | null>(null);
+  const [checkedInTodayIds, setCheckedInTodayIds] = useState<Set<string>>(new Set());
+  const [attendanceStatsRefresh, setAttendanceStatsRefresh] = useState(0);
+  const bumpAttendanceStats = () => {
+    setAttendanceStatsRefresh(k => k + 1);
+    broadcastAttendanceChanged();
+  };
 
   const load = async () => {
-    const { data, error } = await supabase.from("children").select("*").order("full_name");
-    if (error) toast.error(error.message); else setItems((data as Child[]) ?? []);
+    const today = new Date().toISOString().slice(0, 10);
+    const [childrenRes, attendanceRes] = await Promise.all([
+      supabase.from("children").select("*").order("full_name"),
+      supabase
+        .from("attendance")
+        .select("child_id")
+        .eq("attendance_date", today)
+        .not("child_id", "is", null),
+    ]);
+    if (childrenRes.error) toast.error(childrenRes.error.message);
+    else setItems((childrenRes.data as Child[]) ?? []);
     setSelected(new Set());
+    if (!attendanceRes.error && attendanceRes.data) {
+      setCheckedInTodayIds(
+        new Set(
+          (attendanceRes.data as { child_id: string | null }[])
+            .map(r => r.child_id)
+            .filter((id): id is string => id != null),
+        ),
+      );
+    }
   };
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => items.filter(c =>
-    !search || c.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    c.parent_name.toLowerCase().includes(search.toLowerCase())
-  ), [items, search]);
+  const filtered = useMemo(() => items.filter(c => {
+    const matchText =
+      !search ||
+      c.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      c.parent_name.toLowerCase().includes(search.toLowerCase());
+    const matchService = !serviceFilter || c.service_schedule === serviceFilter;
+    return matchText && matchService;
+  }), [items, search, serviceFilter]);
 
   const allSelected = filtered.length > 0 && filtered.every(c => selected.has(c.id));
   const toggleAll = () => {
@@ -167,62 +201,170 @@ function ChildrenPage() {
     w.document.close();
   };
 
+  const manualCheckIn = async (c: Child) => {
+    setBusyCheckIn(c.id);
+    const payload = {
+      child_id: c.id,
+      service_schedule: c.service_schedule,
+      attendance_date: new Date().toISOString().slice(0, 10),
+      attendance_time: new Date().toTimeString().slice(0, 8),
+      method: "manual" as const,
+    };
+    if (!navigator.onLine) {
+      enqueueAttendance(payload);
+      toast.success(`${c.full_name} — saved offline`);
+      setBusyCheckIn(null);
+      return;
+    }
+    const { error } = await supabase.from("attendance").insert(payload);
+    setBusyCheckIn(null);
+    if (error) {
+      if (error.message.toLowerCase().includes("duplicate") || (error as { code?: string }).code === "23505") {
+        setCheckedInTodayIds(prev => new Set(prev).add(c.id));
+        toast.info(`${c.full_name} is already checked in today`);
+      } else toast.error(error.message);
+    } else {
+      setCheckedInTodayIds(prev => new Set(prev).add(c.id));
+      toast.success(`${c.full_name} checked in`);
+      bumpAttendanceStats();
+    }
+  };
+
+  const removeCheckInToday = async (c: Child) => {
+    if (!navigator.onLine) {
+      toast.error("Connect to the internet to remove a check-in.");
+      return;
+    }
+    setBusyCheckIn(c.id);
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from("attendance")
+      .delete()
+      .eq("child_id", c.id)
+      .eq("attendance_date", today)
+      .select("id");
+    setBusyCheckIn(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (!data?.length) {
+      toast.info("No attendance found for today — refreshing.");
+      load();
+      bumpAttendanceStats();
+      return;
+    }
+    setCheckedInTodayIds(prev => {
+      const next = new Set(prev);
+      next.delete(c.id);
+      return next;
+    });
+    toast.success(`${c.full_name} removed from today's attendance`);
+    bumpAttendanceStats();
+  };
+
+  const toggleAttendanceToday = async (c: Child) => {
+    if (checkedInTodayIds.has(c.id)) await removeCheckInToday(c);
+    else await manualCheckIn(c);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Children</h1>
-          <p className="text-muted-foreground mt-1">Register children and generate QR badges.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <CSVImport
-            sampleHeaders={["full_name", "age", "parent_name", "service_schedule"]}
-            onImport={importCSV}
-          />
-          <Button variant="outline" onClick={exportCSV}><FileDown className="h-4 w-4 mr-2" />Export CSV</Button>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Register Child</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? "Edit Child" : "Register Child"}</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e.currentTarget); }} className="space-y-4">
-                <div className="space-y-2"><Label>Full Name</Label>
-                  <Input name="full_name" required defaultValue={editing?.full_name} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Age</Label>
-                    <Input name="age" type="number" min={0} max={18} required defaultValue={editing?.age} /></div>
-                  <div className="space-y-2"><Label>Service Schedule</Label>
-                    <Input name="service_schedule" list="services" required defaultValue={editing?.service_schedule} placeholder="Pick or type" />
-                    <datalist id="services">{SERVICES.map(s => <option key={s} value={s} />)}</datalist></div>
-                </div>
-                <div className="space-y-2"><Label>Parent's Name</Label>
-                  <Input name="parent_name" required defaultValue={editing?.parent_name} /></div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button type="submit">{editing ? "Save" : "Register"}</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Children</h1>
+        <p className="text-muted-foreground mt-1">Register children and generate QR badges.</p>
       </div>
 
-      <AttendanceStats filter="child" title="Today's Children Check-ins" />
+      <AttendanceStats
+        filter="child"
+        title="Today's Children Check-ins"
+        refreshKey={attendanceStatsRefresh}
+      />
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative max-w-sm flex-1">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search by name or parent..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            {selected.size > 0 && (
+      <Card className="overflow-hidden py-0 gap-0 shadow-sm">
+        <TableToolbar
+          primary={
+            <>
+              <div className="relative min-w-[200px] max-w-md flex-1">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  placeholder="Search by name or parent…"
+                  className="pl-9"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  aria-label="Search children"
+                />
+              </div>
+              <div className="w-full min-w-[160px] sm:w-52 space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Service</Label>
+                <Select
+                  value={serviceFilter || "__all__"}
+                  onValueChange={v => setServiceFilter(v === "__all__" ? "" : v)}
+                >
+                  <SelectTrigger aria-label="Filter by service">
+                    <SelectValue placeholder="All services" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All services</SelectItem>
+                    {SERVICES.map(s => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+                <CSVImport
+                  sampleHeaders={["full_name", "age", "parent_name", "service_schedule"]}
+                  onImport={importCSV}
+                />
+                <Button variant="outline" size="sm" onClick={exportCSV}>
+                  <FileDown className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </Button>
+                <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Register Child</span>
+                      <span className="sm:hidden">Add</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>{editing ? "Edit Child" : "Register Child"}</DialogTitle></DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e.currentTarget); }} className="space-y-4">
+                      <div className="space-y-2"><Label>Full Name</Label>
+                        <Input name="full_name" required defaultValue={editing?.full_name} /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label>Age</Label>
+                          <Input name="age" type="number" min={0} max={18} required defaultValue={editing?.age} /></div>
+                        <div className="space-y-2"><Label>Service Schedule</Label>
+                          <Input name="service_schedule" list="services" required defaultValue={editing?.service_schedule} placeholder="Pick or type" />
+                          <datalist id="services">{SERVICES.map(s => <option key={s} value={s} />)}</datalist></div>
+                      </div>
+                      <div className="space-y-2"><Label>Parent's Name</Label>
+                        <Input name="parent_name" required defaultValue={editing?.parent_name} /></div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                        <Button type="submit">{editing ? "Save" : "Register"}</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </>
+          }
+          footer={
+            selected.size > 0 ? (
               <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />Delete Selected ({selected.size})
               </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
+            ) : null
+          }
+        />
+        <CardContent className="p-0 pb-6 pt-0">
+          <div className="overflow-x-auto px-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -240,6 +382,7 @@ function ChildrenPage() {
               )}
               {filtered.map(c => {
                 const cat = ageCategory(c.age);
+                const isCheckedInToday = checkedInTodayIds.has(c.id);
                 return (
                   <TableRow key={c.id} data-state={selected.has(c.id) ? "selected" : undefined}>
                     <TableCell><Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggleOne(c.id)} /></TableCell>
@@ -249,6 +392,30 @@ function ChildrenPage() {
                     <TableCell>{c.parent_name}</TableCell>
                     <TableCell>{c.service_schedule}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        type="button"
+                        aria-pressed={isCheckedInToday}
+                        title={
+                          isCheckedInToday
+                            ? "Checked in today — click to remove"
+                            : "Not checked in — click to check in"
+                        }
+                        disabled={busyCheckIn === c.id}
+                        onClick={() => toggleAttendanceToday(c)}
+                        className={
+                          isCheckedInToday
+                            ? "text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-500 dark:hover:bg-green-950/40"
+                            : undefined
+                        }
+                      >
+                        {isCheckedInToday ? (
+                          <CircleCheck className="h-4 w-4" strokeWidth={2.75} aria-hidden />
+                        ) : (
+                          <UserCheck className="h-4 w-4" aria-hidden />
+                        )}
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => setQrFor(c)}><QrCode className="h-4 w-4" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                       <Button size="sm" variant="ghost" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -258,6 +425,7 @@ function ChildrenPage() {
               })}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

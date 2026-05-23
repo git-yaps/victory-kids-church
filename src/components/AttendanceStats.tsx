@@ -17,9 +17,11 @@ const SLOTS: { label: string; hour: number }[] = [
 interface Props {
   filter?: Filter;
   title?: string;
+  /** Increment or change to force a refetch of the same date (e.g. after add/remove attendance elsewhere). */
+  refreshKey?: number;
 }
 
-export function AttendanceStats({ filter = "all", title = "Today's Check-ins" }: Props) {
+export function AttendanceStats({ filter = "all", title = "Today's Check-ins", refreshKey = 0 }: Props) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [counts, setCounts] = useState<number[]>([0, 0, 0, 0, 0]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ export function AttendanceStats({ filter = "all", title = "Today's Check-ins" }:
     };
     load();
     return () => { cancelled = true; };
-  }, [date, filter]);
+  }, [date, filter, refreshKey]);
 
   return (
     <div className="space-y-3">

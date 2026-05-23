@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TableToolbar } from "@/components/TableToolbar";
 import { toast } from "sonner";
 import { Plus, QrCode, Pencil, Trash2, Download, Printer, Search, FileDown } from "lucide-react";
 import { QRCodeImage } from "@/components/QRCodeImage";
@@ -49,6 +51,7 @@ function buildQR(m: Member) {
 function ServePage() {
   const [items, setItems] = useState<Member[]>([]);
   const [search, setSearch] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
   const [editing, setEditing] = useState<Member | null>(null);
   const [open, setOpen] = useState(false);
   const [qrFor, setQrFor] = useState<Member | null>(null);
@@ -61,9 +64,11 @@ function ServePage() {
   };
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => items.filter(m =>
-    !search || m.full_name.toLowerCase().includes(search.toLowerCase())
-  ), [items, search]);
+  const filtered = useMemo(() => items.filter(m => {
+    const matchText = !search || m.full_name.toLowerCase().includes(search.toLowerCase());
+    const matchService = !serviceFilter || m.service_schedule === serviceFilter;
+    return matchText && matchService;
+  }), [items, search, serviceFilter]);
 
   const allSelected = filtered.length > 0 && filtered.every(m => selected.has(m.id));
   const toggleAll = () => {
@@ -168,58 +173,95 @@ function ServePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Serve Team</h1>
-          <p className="text-muted-foreground mt-1">Register serve team members and generate QR badges.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <CSVImport
-            sampleHeaders={["full_name", "birthday", "service_schedule"]}
-            onImport={importCSV}
-          />
-          <Button variant="outline" onClick={exportCSV}><FileDown className="h-4 w-4 mr-2" />Export CSV</Button>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Register Member</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? "Edit Member" : "Register Serve Team Member"}</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e.currentTarget); }} className="space-y-4">
-                <div className="space-y-2"><Label>Full Name</Label>
-                  <Input name="full_name" required defaultValue={editing?.full_name} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Birthday</Label>
-                    <Input name="birthday" type="date" required defaultValue={editing?.birthday} /></div>
-                  <div className="space-y-2"><Label>Service Schedule</Label>
-                    <Input name="service_schedule" list="serve-services" required defaultValue={editing?.service_schedule} placeholder="Pick or type" />
-                    <datalist id="serve-services">{SERVICES.map(s => <option key={s} value={s} />)}</datalist></div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button type="submit">{editing ? "Save" : "Register"}</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Serve Team</h1>
+        <p className="text-muted-foreground mt-1">Register serve team members and generate QR badges.</p>
       </div>
 
       <AttendanceStats filter="member" title="Today's Serve Team Check-ins" />
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative max-w-sm flex-1">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search by name..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            {selected.size > 0 && (
+      <Card className="overflow-hidden py-0 gap-0 shadow-sm">
+        <TableToolbar
+          primary={
+            <>
+              <div className="relative min-w-[200px] max-w-md flex-1">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  placeholder="Search by name…"
+                  className="pl-9"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  aria-label="Search serve team"
+                />
+              </div>
+              <div className="w-full min-w-[160px] sm:w-52 space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Service</Label>
+                <Select
+                  value={serviceFilter || "__all__"}
+                  onValueChange={v => setServiceFilter(v === "__all__" ? "" : v)}
+                >
+                  <SelectTrigger aria-label="Filter by service">
+                    <SelectValue placeholder="All services" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All services</SelectItem>
+                    {SERVICES.map(s => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+                <CSVImport
+                  sampleHeaders={["full_name", "birthday", "service_schedule"]}
+                  onImport={importCSV}
+                />
+                <Button variant="outline" size="sm" onClick={exportCSV}>
+                  <FileDown className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </Button>
+                <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Register Member</span>
+                      <span className="sm:hidden">Add</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>{editing ? "Edit Member" : "Register Serve Team Member"}</DialogTitle></DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(e.currentTarget); }} className="space-y-4">
+                      <div className="space-y-2"><Label>Full Name</Label>
+                        <Input name="full_name" required defaultValue={editing?.full_name} /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label>Birthday</Label>
+                          <Input name="birthday" type="date" required defaultValue={editing?.birthday} /></div>
+                        <div className="space-y-2"><Label>Service Schedule</Label>
+                          <Input name="service_schedule" list="serve-services" required defaultValue={editing?.service_schedule} placeholder="Pick or type" />
+                          <datalist id="serve-services">{SERVICES.map(s => <option key={s} value={s} />)}</datalist></div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                        <Button type="submit">{editing ? "Save" : "Register"}</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </>
+          }
+          footer={
+            selected.size > 0 ? (
               <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />Delete Selected ({selected.size})
               </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
+            ) : null
+          }
+        />
+        <CardContent className="p-0 pb-6 pt-0">
+          <div className="overflow-x-auto px-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -251,6 +293,7 @@ function ServePage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

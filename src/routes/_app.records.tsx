@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +12,8 @@ import { toast } from "sonner";
 import { UserPlus, FileDown, Trash2 } from "lucide-react";
 import { downloadCSV, ageCategory, ageFromBirthday } from "@/lib/utils-app";
 import { AttendanceStats } from "@/components/AttendanceStats";
+import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendance-sync";
+import { TableToolbar } from "@/components/TableToolbar";
 
 export const Route = createFileRoute("/_app/records")({
   component: RecordsPage,
@@ -37,8 +40,9 @@ function RecordsPage() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     let q = supabase.from("attendance")
       .select("id,attendance_date,attendance_time,service_schedule,method,children(full_name,parent_name,age),serve_team(full_name,birthday)")
@@ -52,9 +56,18 @@ function RecordsPage() {
     if (error) { toast.error(error.message); return; }
     setRows((data as any) ?? []);
     setSelected(new Set());
-  };
+  }, [date, service, page]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, service, page]);
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const onSync = () => {
+      setStatsRefreshKey(k => k + 1);
+      void load();
+    };
+    window.addEventListener(ATTENDANCE_CHANGED_EVENT, onSync);
+    return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, onSync);
+  }, [load]);
 
   const filtered = useMemo(() => rows.filter(r => {
     const name = r.children?.full_name ?? r.serve_team?.full_name ?? "";
@@ -82,7 +95,8 @@ function RecordsPage() {
     const ids = Array.from(selected);
     const { error } = await supabase.from("attendance").delete().in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success(`Deleted ${ids.length}`); load();
+    toast.success(`Deleted ${ids.length}`);
+    window.dispatchEvent(new Event(ATTENDANCE_CHANGED_EVENT));
   };
 
   const exportCSV = () => {
@@ -107,41 +121,77 @@ function RecordsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Attendance Records</h1>
-          <p className="text-muted-foreground mt-1">Records older than 30 days are auto-purged.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCSV}><FileDown className="h-4 w-4 mr-2" />Export CSV</Button>
-          <Link to="/manual"><Button variant="outline"><UserPlus className="h-4 w-4 mr-2" />Manual Check-In</Button></Link>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Attendance Records</h1>
+        <p className="text-muted-foreground mt-1">Records older than 30 days are auto-purged.</p>
       </div>
 
-      <AttendanceStats title="Today's Check-ins (All)" />
+      <AttendanceStats title="Today's Check-ins (All)" refreshKey={statsRefreshKey} />
 
-      <Card>
-        <CardHeader>
-          <div className="grid gap-3 md:grid-cols-4">
-            <div><label className="text-xs text-muted-foreground">Date</label>
-              <Input type="date" value={date} onChange={e => { setDate(e.target.value); setPage(0); }} /></div>
-            <div><label className="text-xs text-muted-foreground">Child name</label>
-              <Input placeholder="Filter..." value={child} onChange={e => setChild(e.target.value)} /></div>
-            <div><label className="text-xs text-muted-foreground">Parent name</label>
-              <Input placeholder="Filter..." value={parent} onChange={e => setParent(e.target.value)} /></div>
-            <div><label className="text-xs text-muted-foreground">Service</label>
-              <Input placeholder="e.g. Sunday" value={service} onChange={e => { setService(e.target.value); setPage(0); }} /></div>
-          </div>
-          <div className="flex gap-2 mt-2 items-center">
-            <Button variant="ghost" size="sm" onClick={() => { setDate(""); setChild(""); setParent(""); setService(""); setPage(0); }}>Clear filters</Button>
-            {selected.size > 0 && (
-              <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />Delete Selected ({selected.size})
+      <Card className="overflow-hidden py-0 gap-0 shadow-sm">
+        <TableToolbar
+          primary={
+            <div className="flex w-full flex-col gap-4 xl:flex-row xl:items-end">
+              <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Date</Label>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={e => { setDate(e.target.value); setPage(0); }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Child name</Label>
+                  <Input placeholder="Filter…" value={child} onChange={e => setChild(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Parent name</Label>
+                  <Input placeholder="Filter…" value={parent} onChange={e => setParent(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Service</Label>
+                  <Input
+                    placeholder="e.g. Sunday"
+                    value={service}
+                    onChange={e => { setService(e.target.value); setPage(0); }}
+                  />
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2 xl:pb-0.5">
+                <Button size="sm" variant="outline" onClick={exportCSV}>
+                  <FileDown className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Export CSV</span>
+                </Button>
+                <Link to="/manual">
+                  <Button size="sm" variant="outline">
+                    <UserPlus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Manual Check-In</span>
+                    <span className="sm:hidden">Check-In</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          }
+          footer={
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setDate(""); setChild(""); setParent(""); setService(""); setPage(0); }}
+              >
+                Clear filters
               </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
+              {selected.size > 0 && (
+                <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />Delete Selected ({selected.size})
+                </Button>
+              )}
+            </>
+          }
+        />
+        <CardContent className="p-0 pb-6 pt-0">
+          <div className="overflow-x-auto px-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -178,7 +228,8 @@ function RecordsPage() {
               })}
             </TableBody>
           </Table>
-          <div className="flex justify-between items-center pt-4">
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
             <span className="text-xs text-muted-foreground">Page {page + 1}</span>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>

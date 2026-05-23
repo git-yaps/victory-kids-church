@@ -59,12 +59,12 @@ function LoginPage() {
           <img src="/victory-kids-logo.jpg" alt="Victory Kids Logo" className="h-11 w-11 rounded-xl object-cover" />
           <div>
             <div className="font-bold">{"\n"}</div>
-            <div className="text-sm opacity-90">Kids Ministry Attendance</div>
+            <div className="text-sm opacity-90 font-bold">Kids Ministry Attendance</div>
           </div>
         </div>
         <div className="space-y-4">
           <ListChecks className="h-12 w-12 opacity-90" />
-          <h1 className="text-4xl font-bold leading-tight">Kids' Church Attendance Checker</h1>
+          <h1 className="text-4xl font-bold leading-tight">Kids' Church Lucena</h1>
           <p className="opacity-90 max-w-sm">Register children, generate QR badges, and track attendance for every service — even offline.</p>
         </div>
         <p className="text-sm opacity-75">© {"\n"} Ministry</p>

@@ -337,7 +337,7 @@ function ChildrenPage() {
       h1{color:#14498B;margin:8px 0;font-size:22px} p{margin:4px 0;color:#444}
       img{width:280px;height:280px}</style></head>
       <body><div class="card">
-        <h1>Victory Kids Church</h1>
+        <h1>Victory Church</h1>
         <img src="${url}" />
         <h2 style="margin:8px 0">${nameHtml}</h2>
         <p>${ageLine}${c.birthday ? `<br>Birthday: ${String(c.birthday).slice(0, 10)}` : ""}</p>

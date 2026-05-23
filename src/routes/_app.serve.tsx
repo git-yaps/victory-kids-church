@@ -230,7 +230,7 @@ function ServePage() {
       h1{color:#14498B;margin:8px 0;font-size:22px} p{margin:4px 0;color:#444}
       img{width:280px;height:280px}</style></head>
       <body><div class="card">
-        <h1>Victory Church — Serve Team</h1>
+        <h1>Victory Kids — Serve Team</h1>
         <img src="${url}" />
         <h2 style="margin:8px 0">${m.full_name}</h2>
         <p>Birthday: ${m.birthday}</p><p>${m.service_schedule}</p>

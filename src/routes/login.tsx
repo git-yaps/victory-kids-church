@@ -56,14 +56,13 @@ function LoginPage() {
     <div className="min-h-screen grid md:grid-cols-2 bg-background">
       <div className="hidden md:flex flex-col justify-between p-12 text-primary-foreground" style={{ background: "var(--gradient-brand)" }}>
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center font-bold">VK</div>
+          <img src="/victory-kids-logo.jpg" alt="Victory Kids Logo" className="h-11 w-11 rounded-xl object-cover" />
           <div>
             <div className="font-bold">Victory Kids Church</div>
             <div className="text-sm opacity-90">Kids Ministry Attendance</div>
           </div>
         </div>
         <div className="space-y-4">
-          <img src="/victory-kids-logo.jpg" alt="Victory Kids Logo" className="h-20 w-auto rounded-xl opacity-90" />
           <h1 className="text-4xl font-bold leading-tight">{"\n"}</h1>
           <p className="opacity-90 max-w-sm">Register children, generate QR badges, and track attendance for every service — even offline.</p>
         </div>

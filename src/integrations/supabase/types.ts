@@ -68,6 +68,7 @@ export type Database = {
       children: {
         Row: {
           age: number
+          birthday: string | null
           created_at: string
           created_by: string | null
           full_name: string
@@ -78,6 +79,7 @@ export type Database = {
         }
         Insert: {
           age: number
+          birthday?: string | null
           created_at?: string
           created_by?: string | null
           full_name: string
@@ -88,6 +90,7 @@ export type Database = {
         }
         Update: {
           age?: number
+          birthday?: string | null
           created_at?: string
           created_by?: string | null
           full_name?: string

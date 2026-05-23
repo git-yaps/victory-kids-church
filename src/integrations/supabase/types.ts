@@ -67,33 +67,33 @@ export type Database = {
       }
       children: {
         Row: {
-          age: number | null
-          birthday: string | null
+          age: number
           created_at: string
           created_by: string | null
-          full_name: string | null
+          full_name: string
           id: string
-          parent_name: string | null
+          parent_name: string
+          service_schedule: string
           updated_at: string
         }
         Insert: {
-          age?: number | null
-          birthday?: string | null
+          age: number
           created_at?: string
           created_by?: string | null
-          full_name?: string | null
+          full_name: string
           id?: string
-          parent_name?: string | null
+          parent_name: string
+          service_schedule: string
           updated_at?: string
         }
         Update: {
-          age?: number | null
-          birthday?: string | null
+          age?: number
           created_at?: string
           created_by?: string | null
-          full_name?: string | null
+          full_name?: string
           id?: string
-          parent_name?: string | null
+          parent_name?: string
+          service_schedule?: string
           updated_at?: string
         }
         Relationships: []

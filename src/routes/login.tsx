@@ -63,7 +63,8 @@ function LoginPage() {
           </div>
         </div>
         <div className="space-y-4">
-          <h1 className="text-4xl font-bold leading-tight">{"\n"}</h1>
+          <ListChecks className="h-12 w-12 opacity-90" />
+          <h1 className="text-4xl font-bold leading-tight">Kids' Church Attendance Checker</h1>
           <p className="opacity-90 max-w-sm">Register children, generate QR badges, and track attendance for every service — even offline.</p>
         </div>
         <p className="text-sm opacity-75">© {"\n"} Ministry</p>

@@ -88,6 +88,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       {
+        rel: "icon",
+        type: "image/jpeg",
+        href: "/victory-kids-logo.jpg",
+      },
+      {
+        rel: "shortcut icon",
+        type: "image/jpeg",
+        href: "/victory-kids-logo.jpg",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/victory-kids-logo.jpg",
+      },
+      {
         rel: "stylesheet",
         href: appCss,
       },

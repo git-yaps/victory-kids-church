@@ -2,9 +2,19 @@ import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, ListChecks, LogOut, Menu, X, WifiOff, Wifi, HandHeart } from "lucide-react";
+import { LayoutDashboard, Users, ListChecks, LogOut, Menu, X, HandHeart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { syncQueue, getQueuedCount } from "@/lib/offline-queue";
 import { toast } from "sonner";
 import { ScannerFAB } from "@/components/ScannerFAB";
@@ -21,7 +31,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { location } = useRouterState();
   const [open, setOpen] = useState(false);
-  const [online, setOnline] = useState(true);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const [queued, setQueued] = useState(0);
 
   useEffect(() => {
@@ -29,24 +39,17 @@ export function AppShell() {
   }, [loading, session, navigate]);
 
   useEffect(() => {
-    const update = () => {
-      setOnline(navigator.onLine);
-      setQueued(getQueuedCount());
-    };
-    update();
+    const updateQueued = () => setQueued(getQueuedCount());
+    updateQueued();
     const onOnline = async () => {
-      setOnline(true);
       const r = await syncQueue();
-      setQueued(getQueuedCount());
+      updateQueued();
       if (r.synced) toast.success(`Synced ${r.synced} offline record${r.synced > 1 ? "s" : ""}`);
     };
-    const onOffline = () => setOnline(false);
     window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    const i = setInterval(update, 5000);
+    const i = setInterval(updateQueued, 5000);
     return () => {
       window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
       clearInterval(i);
     };
   }, []);
@@ -55,18 +58,22 @@ export function AppShell() {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading...</div>;
   }
 
-  const handleLogout = async () => {
+  const handleLogoutConfirm = async () => {
     await supabase.auth.signOut();
+    setLogoutOpen(false);
     navigate({ to: "/login" });
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform md:translate-x-0 md:static md:inset-auto",
-        open ? "translate-x-0" : "-translate-x-full"
-      )}>
+    <div className="flex min-h-svh bg-background md:items-start">
+      {/* Sidebar: full viewport height; sticky so it stays put while main content scrolls */}
+      <aside
+        className={cn(
+          "z-40 flex h-[100dvh] w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-transform",
+          "fixed inset-y-0 left-0 md:relative md:h-svh md:sticky md:top-0 md:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <div className="px-6 py-6 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground flex items-center justify-center font-bold">VK</div>
@@ -91,15 +98,18 @@ export function AppShell() {
           })}
         </nav>
         <div className="p-3 border-t border-sidebar-border">
-          <div className="flex items-center justify-between px-3 py-2 mb-2 text-xs">
-            <span className="flex items-center gap-1.5">
-              {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-              {online ? "Online" : "Offline"}
-            </span>
-            {queued > 0 && <span className="bg-sidebar-accent rounded-full px-2 py-0.5">{queued} queued</span>}
-          </div>
-          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" /> Logout
+          {queued > 0 && (
+            <div className="mb-2 flex justify-end px-3 py-2 text-xs">
+              <span className="rounded-full bg-sidebar-accent px-2 py-0.5">{queued} queued</span>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            type="button"
+            onClick={() => setLogoutOpen(true)}
+          >
+            <LogOut className="mr-2 h-4 w-4" /> Logout
           </Button>
         </div>
       </aside>
@@ -107,7 +117,7 @@ export function AppShell() {
       {open && <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setOpen(false)} />}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-h-svh min-w-0 flex-1 flex-col">
         <header className="md:hidden sticky top-0 z-20 bg-card border-b px-4 py-3 flex items-center gap-3">
           <button onClick={() => setOpen(o => !o)} className="p-1.5 rounded-md hover:bg-accent">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -119,6 +129,30 @@ export function AppShell() {
         </main>
       </div>
       <ScannerFAB />
+
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will need to sign in again to record or view attendance.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 sm:mt-0"
+              onClick={(e) => {
+                e.preventDefault();
+                void handleLogoutConfirm();
+              }}
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

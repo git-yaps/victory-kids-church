@@ -13,18 +13,18 @@ type TableToolbarProps = {
 
 export function TableToolbar({ className, primary, secondary, footer }: TableToolbarProps) {
   if (primary == null && secondary == null && footer == null) return null;
+
+  const rowCn =
+    "flex flex-wrap items-center gap-3 px-4 py-3 [&_button]:h-9 [&_button]:min-h-9 [&_button]:gap-2 [&_button]:px-4 [&_button]:text-sm";
+
   return (
     <div className={cn("border-b bg-muted/40", className)}>
-      {primary != null && (
-        <div className="flex flex-wrap items-end gap-3 px-4 py-3">{primary}</div>
-      )}
+      {primary != null && <div className={rowCn}>{primary}</div>}
       {secondary != null && (
-        <div className="flex flex-wrap items-end gap-3 border-t border-border/60 px-4 py-3">
-          {secondary}
-        </div>
+        <div className={cn(rowCn, "border-t border-border/60")}>{secondary}</div>
       )}
       {footer != null && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 px-4 py-2 [&_button]:h-9 [&_button]:min-h-9 [&_button]:px-4 [&_button]:text-sm">
           {footer}
         </div>
       )}

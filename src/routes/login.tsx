@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ScanLine } from "lucide-react";
+import { Eye, EyeOff, ScanLine } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -20,8 +20,13 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => { if (session) navigate({ to: "/dashboard" }); }, [session, navigate]);
+
+  useEffect(() => {
+    setShowPassword(false);
+  }, [mode]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +89,26 @@ function LoginPage() {
                     <button type="button" onClick={forgot} className="text-xs text-primary hover:underline">Forgot?</button>
                   )}
                 </div>
-                <Input id="password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    className="pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground absolute right-0 top-0 flex h-full w-10 items-center justify-center rounded-r-md transition-colors"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}

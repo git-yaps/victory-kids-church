@@ -8,14 +8,25 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
 import { enqueueAttendance } from "@/lib/offline-queue";
-import { ageCategory, ageFromBirthday } from "@/lib/utils-app";
+import {
+  ageCategory,
+  ageFromBirthday,
+  displayChildAge,
+  DEFAULT_CHILD_ATTENDANCE_SERVICE,
+  isChildrenOnlyAttendanceServiceSchedule,
+} from "@/lib/utils-app";
+
+function displayName(full_name: unknown) {
+  const n = typeof full_name === "string" ? full_name.trim() : "";
+  return n || "(Unnamed)";
+}
 
 type Person = {
   kind: "child" | "member";
   full_name: string;
-  age: number;
+  age: number | null;
   parent_name?: string;
-  service_schedule: string;
+  service_schedule?: string;
 };
 type LastResult = { ok: boolean; person?: Person; message: string; ts: number };
 
@@ -44,7 +55,19 @@ export function ScannerFAB() {
         scannerRef.current = html5;
         await html5.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
+          {
+            fps: 10,
+            // Square preview + square scan region so the shaded finder matches geometry.
+            aspectRatio: 1,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const minSide = Math.min(viewfinderWidth, viewfinderHeight);
+              const edge = Math.min(
+                minSide,
+                Math.max(50, Math.floor(minSide * 0.72)),
+              );
+              return { width: edge, height: edge };
+            },
+          },
           onScan,
           () => {},
         );
@@ -115,6 +138,17 @@ export function ScannerFAB() {
         return;
       }
       const m = data as any;
+      if (isChildrenOnlyAttendanceServiceSchedule(m.service_schedule)) {
+        const msg =
+          `Serve cannot check in as "${DEFAULT_CHILD_ATTENDANCE_SERVICE}" — assign a serve service on their profile.`;
+        setLast({
+          ok: false,
+          message: msg,
+          ts: Date.now(),
+        });
+        toast.error(msg);
+        return;
+      }
       person = {
         kind: "member",
         full_name: m.full_name,
@@ -140,14 +174,14 @@ export function ScannerFAB() {
       }
       person = {
         kind: "child",
-        full_name: data.full_name,
-        age: data.age,
-        parent_name: data.parent_name,
-        service_schedule: data.service_schedule,
+        full_name: displayName(data.full_name),
+        age: displayChildAge({ birthday: data.birthday, age: data.age }),
+        parent_name: data.parent_name ?? "",
+        service_schedule: DEFAULT_CHILD_ATTENDANCE_SERVICE,
       };
       attendance = {
         child_id: data.id,
-        service_schedule: data.service_schedule,
+        service_schedule: DEFAULT_CHILD_ATTENDANCE_SERVICE,
         attendance_date: new Date().toISOString().slice(0, 10),
         attendance_time: new Date().toTimeString().slice(0, 8),
         method: "qr" as const,
@@ -252,15 +286,24 @@ export function ScannerFAB() {
                     <>
                       <div className="font-semibold truncate">{last.person.full_name}</div>
                       <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="secondary">Age {last.person.age}</Badge>
+                        {last.person.age != null && (
+                          <Badge variant="secondary">Age {last.person.age}</Badge>
+                        )}
+                        {last.person.age == null && last.person.kind === "child" && (
+                          <Badge variant="outline">Age —</Badge>
+                        )}
                         {last.person.kind === "child" ? (
-                          <Badge className={ageCategory(last.person.age).tone}>
-                            {ageCategory(last.person.age).label}
-                          </Badge>
+                          last.person.age != null ? (
+                            <Badge className={ageCategory(last.person.age).tone}>
+                              {ageCategory(last.person.age).label}
+                            </Badge>
+                          ) : null
                         ) : (
                           <Badge className="bg-primary text-primary-foreground">Serve Team</Badge>
                         )}
-                        <Badge variant="outline">{last.person.service_schedule}</Badge>
+                        {last.person.kind === "member" && last.person.service_schedule && (
+                          <Badge variant="outline">{last.person.service_schedule}</Badge>
+                        )}
                       </div>
                       {last.person.parent_name && (
                         <div className="text-xs text-muted-foreground">

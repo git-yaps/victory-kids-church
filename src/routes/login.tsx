@@ -66,7 +66,7 @@ function LoginPage() {
           <h1 className="text-4xl font-bold leading-tight">{"\n"}</h1>
           <p className="opacity-90 max-w-sm">Register children, generate QR badges, and track attendance for every service — even offline.</p>
         </div>
-        <p className="text-sm opacity-75">© Victory Kids Church Ministry</p>
+        <p className="text-sm opacity-75">© {"\n"} Ministry</p>
       </div>
 
       <div className="flex items-center justify-center p-6">

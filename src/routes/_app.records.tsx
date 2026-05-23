@@ -137,7 +137,7 @@ function RecordsPage() {
     if (!serviceIsSundaySlot) return;
     setCheckInSlotHour((prev) => {
       const allowed = checkInSlotsForToolbar.map((s) => s.hour);
-      if (!allowed.includes(prev)) return allowed[0] ?? CHECK_IN_TIME_SLOTS[0].hour;
+      if (!(allowed as number[]).includes(prev)) return allowed[0] ?? CHECK_IN_TIME_SLOTS[0].hour;
       return prev;
     });
   }, [serviceIsSundaySlot, serviceSchedule, checkInSlotsForToolbar]);
